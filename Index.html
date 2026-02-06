@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Redline Editor Pro (Outlook Optimized)</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --border: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --deletion: #c00000;
+            --insertion: #008000;
+            --moved: #2563eb;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Instrument Sans', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+        
+        header { margin-bottom: 32px; border-bottom: 1px solid var(--border); padding-bottom: 24px; }
+        h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 4px; }
+        .subtitle { color: var(--text-secondary); font-size: 14px; }
+
+        .editor-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1024px) { .editor-grid { grid-template-columns: 1fr; } }
+
+        .editor-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-tertiary);
+        }
+
+        .panel-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); }
+        
+        textarea {
+            width: 100%;
+            min-height: 280px;
+            padding: 16px;
+            border: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            resize: vertical;
+            color: var(--text-primary);
+        }
+
+        textarea:focus { outline: none; }
+
+        .actions { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+        
+        button {
+            font-family: inherit; font-size: 13px; font-weight: 500; padding: 10px 18px;
+            border-radius: 8px; border: none; cursor: pointer; transition: 0.1s;
+        }
+
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary { background: white; border: 1px solid var(--border); color: var(--text-primary); }
+        .btn-secondary:hover { background: var(--bg-tertiary); }
+
+        .output-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 32px;
+        }
+
+        .output-content { padding: 32px; min-height: 200px; background: #fff; }
+        
+        #preview { 
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif; 
+            font-size: 11pt; 
+            color: #000; 
+            white-space: normal; 
+            word-wrap: break-word;
+        }
+
+        #preview p {
+            margin-bottom: 12pt;
+        }
+
+        .stats {
+            display: flex; gap: 20px; padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            font-size: 12px; background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        .stat-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+        .bg-del { background: var(--deletion); }
+        .bg-ins { background: var(--insertion); }
+        .bg-mov { background: var(--moved); }
+
+        .moved-tag {
+            font-size: 10px; font-weight: 800; background: var(--moved); color: white;
+            padding: 1px 4px; border-radius: 3px; margin: 0 4px; vertical-align: middle;
+            text-decoration: none !important; display: inline-block;
+        }
+
+        .info-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-top: 48px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+        }
+
+        @media (max-width: 900px) {
+            .info-section { grid-template-columns: 1fr; }
+        }
+
+        .info-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .info-card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-card ol {
+            padding-left: 18px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .info-card li { margin-bottom: 8px; }
+
+        .info-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .privacy-card {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+
+        .privacy-card h3 { color: #166534; }
+        .privacy-card p { color: #15803d; }
+
+        .toast {
+            position: fixed; bottom: 20px; right: 20px; background: #1e293b;
+            color: white; padding: 12px 20px; border-radius: 8px; font-size: 13px;
+            opacity: 0; transform: translateY(10px); transition: 0.2s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Email Redline Editor Pro</h1>
+            <p class="subtitle">Optimized for Outlook: Track changes that survive <strong>Ctrl+V</strong> in email replies.</p>
+        </header>
+
+        <div class="editor-grid">
+            <div class="editor-panel">
+                <div class="panel-header"><span class="panel-title">Original Email</span></div>
+                <textarea id="original" placeholder="Paste original text..."></textarea>
+            </div>
+            <div class="editor-panel">
+                <div class="panel-header"><span class="panel-title">Edited Version</span></div>
+                <textarea id="edited" placeholder="Edit the text here..."></textarea>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn-primary" onclick="copyForEmail()">Copy for Outlook</button>
+            <button class="btn-secondary" onclick="copyOriginalToEdited()">Copy Original → Edited</button>
+            <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+        </div>
+
+        <div class="output-section">
+            <div class="panel-header"><span class="panel-title">Outlook Preview</span></div>
+            <div class="output-content">
+                <div id="preview"></div>
+            </div>
+            <div class="stats">
+                <span><span class="stat-dot bg-del"></span> <span id="delCount">0</span> deletions</span>
+                <span><span class="stat-dot bg-ins"></span> <span id="insCount">0</span> insertions</span>
+                <span><span class="stat-dot bg-mov"></span> <span id="movCount">0</span> moves</span>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-card">
+                <h3>📋 How to Use</h3>
+                <ol>
+                    <li>Paste the <strong>Original Email</strong> into the left panel.</li>
+                    <li>Click <strong>Copy Original → Edited</strong> to duplicate the text into the right panel.</li>
+                    <li>Make your edits in the <strong>Edited Version</strong> panel. Changes appear instantly below.</li>
+                    <li>Click <strong>Copy for Outlook</strong>.</li>
+                    <li>Go to your Outlook email and press <strong>Ctrl+V</strong>. The colors and paragraphs will be preserved.</li>
+                </ol>
+            </div>
+            <div class="info-card privacy-card">
+                <h3>🛡️ Privacy & Security</h3>
+                <p>This tool runs <strong>100% in your browser</strong>. No data is transmitted to any server — all text processing happens locally on your machine. Nothing you paste is stored, logged, or sent anywhere. When you close this tab, your data is gone. Safe for confidential and sensitive content.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Copied to clipboard!</div>
+
+    <script>
+        function tokenize(text) { return text.split(/(\s+)/).filter(t => t.length > 0); }
+
+        function getLCS(a, b) {
+            const m = a.length, n = b.length;
+            const dp = Array(m + 1).fill(0).map(() => Array(n + 1).fill(0));
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    dp[i][j] = (a[i - 1] === b[j - 1]) ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+                }
+            }
+            let lcs = [], i = m, j = n;
+            while (i > 0 && j > 0) {
+                if (a[i - 1] === b[j - 1]) { lcs.unshift(a[i - 1]); i--; j--; }
+                else if (dp[i - 1][j] > dp[i][j - 1]) i--; else j--;
+            }
+            return lcs;
+        }
+
+        function generateRedline() {
+            const originalText = document.getElementById('original').value;
+            const editedText = document.getElementById('edited').value;
+            
+            // Move Detection logic
+            const oldPara = originalText.split(/\n\s*\n/).filter(p => p.trim());
+            const newPara = editedText.split(/\n\s*\n/).filter(p => p.trim());
+            const movedParas = new Set();
+            newPara.forEach((p, nIdx) => {
+                const oIdx = oldPara.indexOf(p);
+                if (oIdx !== -1 && oIdx !== nIdx) movedParas.add(p);
+            });
+
+            // Word-level Diff
+            const oldWords = tokenize(originalText);
+            const newWords = tokenize(editedText);
+            const lcs = getLCS(oldWords, newWords);
+            
+            let diff = [], oIdx = 0, nIdx = 0, lIdx = 0;
+            while (oIdx < oldWords.length || nIdx < newWords.length) {
+                if (lIdx < lcs.length) {
+                    while (oIdx < oldWords.length && oldWords[oIdx] !== lcs[lIdx]) diff.push({type:'del', v:oldWords[oIdx++]});
+                    while (nIdx < newWords.length && newWords[nIdx] !== lcs[lIdx]) diff.push({type:'ins', v:newWords[nIdx++]});
+                    diff.push({type:'eq', v:oldWords[oIdx++]}); nIdx++; lIdx++;
+                } else {
+                    if (oIdx < oldWords.length) diff.push({type:'del', v:oldWords[oIdx++]});
+                    if (nIdx < newWords.length) diff.push({type:'ins', v:newWords[nIdx++]});
+                }
+            }
+
+            const OUTLOOK_STYLE = "font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 11pt; line-height: 1.2; margin: 0; margin-bottom: 12pt; mso-line-height-rule: exactly; mso-margin-top-alt: 0pt; mso-margin-bottom-alt: 12pt;";
+
+            let delC = 0, insC = 0;
+            let htmlChunks = [];
+            let currentChunk = '';
+
+            diff.forEach(p => {
+                const cleanVal = p.v.trim();
+                let isMov = (p.type === 'ins' && movedParas.has(cleanVal));
+                
+                let val = p.v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                
+                let styledVal = '';
+                if (p.type === 'del') {
+                    styledVal = `<span style="color:#c00000;text-decoration:line-through;">${val}</span>`;
+                    delC++;
+                } else if (isMov) {
+                    styledVal = `<span style="color:#2563eb;text-decoration:underline;"><span class="moved-tag" style="background:#2563eb;color:#ffffff;font-size:8pt;padding:1px 3px;text-decoration:none;">MOVED</span>${val}</span>`;
+                } else if (p.type === 'ins') {
+                    styledVal = `<span style="color:#008000;text-decoration:underline;">${val}</span>`;
+                    insC++;
+                } else {
+                    styledVal = val;
+                }
+
+                if (styledVal.includes('\n')) {
+                    const lines = styledVal.split('\n');
+                    for (let i = 0; i < lines.length; i++) {
+                        currentChunk += lines[i];
+                        if (i < lines.length - 1) {
+                            htmlChunks.push(currentChunk);
+                            currentChunk = '';
+                        }
+                    }
+                } else {
+                    currentChunk += styledVal;
+                }
+            });
+            htmlChunks.push(currentChunk);
+
+            const finalHtml = htmlChunks
+                .map(chunk => {
+                    if (chunk.trim() === '') return `<p style="${OUTLOOK_STYLE}">&nbsp;</p>`;
+                    return `<p style="${OUTLOOK_STYLE}">${chunk}</p>`;
+                })
+                .join('');
+
+            document.getElementById('preview').innerHTML = finalHtml || '<p style="' + OUTLOOK_STYLE + ';color:#94a3b8">Changes will appear here...</p>';
+            document.getElementById('delCount').innerText = delC;
+            document.getElementById('insCount').innerText = insC;
+            document.getElementById('movCount').innerText = movedParas.size;
+        }
+
+        function copyForEmail() {
+            const preview = document.getElementById('preview');
+            const range = document.createRange();
+            range.selectNodeContents(preview);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            
+            try {
+                document.execCommand('copy');
+                showToast("Copied! Use Ctrl+V in Outlook.");
+            } catch (err) {
+                showToast("Error copying text.");
+            }
+        }
+
+        function copyOriginalToEdited() {
+            document.getElementById('edited').value = document.getElementById('original').value;
+            generateRedline();
+            showToast("Copied to Editor");
+        }
+
+        function clearAll() {
+            document.getElementById('original').value = '';
+            document.getElementById('edited').value = '';
+            generateRedline();
+            showToast("Cleared");
+        }
+
+        function showToast(m) {
+            const t = document.getElementById('toast');
+            t.innerText = m; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        document.getElementById('original').addEventListener('input', generateRedline);
+        document.getElementById('edited').addEventListener('input', generateRedline);
+    </script>
+</body>
+</html>
